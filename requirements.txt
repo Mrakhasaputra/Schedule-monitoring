@@ -6,3 +6,9 @@ pydantic
 apscheduler
 python-dotenv
 requests
+Flask==2.3.3
+Flask-APScheduler==1.13.1
+SQLAlchemy==2.0.23
+pydantic==2.5.0
+psycopg2-binary==2.9.9
+python-dotenv==1.0.0

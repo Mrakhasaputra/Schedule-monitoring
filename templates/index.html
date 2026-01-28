@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Printing Task Scheduler</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <style>
+        .tab-active {
+            @apply bg-blue-500 text-white;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-bold text-gray-800 mb-3">
+                <i class="fas fa-print mr-3 text-blue-600"></i>
+                Dynamic Printing Task Scheduler
+            </h1>
+            <p class="text-gray-600 text-lg">Kelola jadwal eksekusi task printing secara dinamis</p>
+            <div class="mt-4 flex justify-center space-x-4">
+                <span class="px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm">
+                    <i class="fas fa-database mr-1"></i> Supabase Connected
+                </span>
+                <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm">
+                    <i class="fas fa-clock mr-1"></i> APScheduler Ready
+                </span>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Form Section -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-2xl shadow-xl p-6 sticky top-6 border border-gray-200">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-6 pb-4 border-b border-gray-200">
+                        <i class="fas fa-plus-circle mr-2 text-green-500"></i>Tambah Jadwal Baru
+                    </h2>
+                    
+                    <form id="scheduleForm" class="space-y-5">
+                        <!-- Task Name -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-tag mr-1"></i>Nama Task
+                            </label>
+                            <input type="text" name="name" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                   placeholder="Contoh: Print Laporan Harian">
+                        </div>
+
+                        <!-- Schedule Type -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-calendar-alt mr-1"></i>Tipe Jadwal
+                            </label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" onclick="setScheduleType('daily')"
+                                        class="schedule-type-btn px-4 py-3 border rounded-lg text-center transition"
+                                        data-type="daily">
+                                    <i class="fas fa-sun mr-1"></i>Harian
+                                </button>
+                                <button type="button" onclick="setScheduleType('weekly')"
+                                        class="schedule-type-btn px-4 py-3 border rounded-lg text-center transition"
+                                        data-type="weekly">
+                                    <i class="fas fa-calendar-week mr-1"></i>Mingguan
+                                </button>
+                                <button type="button" onclick="setScheduleType('monthly')"
+                                        class="schedule-type-btn px-4 py-3 border rounded-lg text-center transition"
+                                        data-type="monthly">
+                                    <i class="fas fa-calendar-day mr-1"></i>Bulanan
+                                </button>
+                            </div>
+                            <input type="hidden" name="schedule_type" id="schedule_type" value="daily">
+                        </div>
+
+                        <!-- Time Input -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-clock mr-1"></i>Waktu Eksekusi
+                            </label>
+                            <input type="time" name="run_time" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                   value="09:00">
+                        </div>
+
+                        <!-- Day of Week (Conditional) -->
+                        <div id="weeklyOptions" class="hidden space-y-3 fade-in">
+                            <label class="block text-sm font-medium text-gray-700">
+                                <i class="fas fa-calendar-day mr-1"></i>Hari dalam Minggu
+                            </label>
+                            <div class="grid grid-cols-4 gap-2">
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="day_of_week" value="mon" class="rounded">
+                                    <span class="ml-2 text-sm">Senin</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="day_of_week" value="tue" class="rounded">
+                                    <span class="ml-2 text-sm">Selasa</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="day_of_week" value="wed" class="rounded">
+                                    <span class="ml-2 text-sm">Rabu</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="day_of_week" value="thu" class="rounded">
+                                    <span class="ml-2 text-sm">Kamis</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="day_of_week" value="fri" class="rounded">
+                                    <span class="ml-2 text-sm">Jumat</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="day_of_week" value="sat" class="rounded">
+                                    <span class="ml-2 text-sm">Sabtu</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="day_of_week" value="sun" class="rounded">
+                                    <span class="ml-2 text-sm">Minggu</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Day of Month (Conditional) -->
+                        <div id="monthlyOptions" class="hidden space-y-3 fade-in">
+                            <label class="block text-sm font-medium text-gray-700">
+                                <i class="fas fa-calendar mr-1"></i>Tanggal dalam Bulan
+                            </label>
+                            <input type="number" name="day_of_month" min="1" max="31"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                                   placeholder="1-31">
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit"
+                                class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 transform hover:-translate-y-0.5 shadow-lg">
+                            <i class="fas fa-plus mr-2"></i>Tambah Jadwal
+                        </button>
+                    </form>
+
+                    <!-- Status Scheduler -->
+                    <div class="mt-8 pt-6 border-t border-gray-200">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">
+                            <i class="fas fa-info-circle mr-1"></i>Status Scheduler
+                        </h3>
+                        <div id="schedulerStatus" class="space-y-2">
+                            <!-- Status akan di-update via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="lg:col-span-3">
+                <!-- Tabs Navigation -->
+                <div class="mb-6">
+                    <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex space-x-8">
+                            <button onclick="showTab('schedules')"
+                                    class="tab-btn py-3 px-4 font-medium text-sm border-b-2 border-transparent hover:text-blue-600 hover:border-blue-300 transition"
+                                    data-tab="schedules">
+                                <i class="fas fa-list mr-2"></i>Semua Jadwal
+                            </button>
+                            <button onclick="showTab('active')"
+                                    class="tab-btn py-3 px-4 font-medium text-sm border-b-2 border-transparent hover:text-blue-600 hover:border-blue-300 transition"
+                                    data-tab="active">
+                                <i class="fas fa-play-circle mr-2"></i>Aktif
+                            </button>
+                            <button onclick="showTab('logs')"
+                                    class="tab-btn py-3 px-4 font-medium text-sm border-b-2 border-transparent hover:text-blue-600 hover:border-blue-300 transition"
+                                    data-tab="logs">
+                                <i class="fas fa-history mr-2"></i>Logs
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- Tab Content -->
+                <div id="tabContent" class="space-y-6">
+                    <!-- Schedules Tab Content -->
+                    <div id="schedulesTab" class="tab-pane fade-in">
+                        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-lg font-semibold text-gray-800">
+                                        <i class="fas fa-calendar-check mr-2"></i>Daftar Jadwal
+                                    </h3>
+                                    <div class="flex items-center space-x-4">
+                                        <span id="totalSchedules" class="text-sm text-gray-600">
+                                            <i class="fas fa-spinner fa-spin mr-1"></i>Loading...
+                                        </span>
+                                        <button onclick="refreshSchedules()"
+                                                class="text-blue-600 hover:text-blue-800 transition">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jadwal</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="schedulesTable" class="bg-white divide-y divide-gray-200">
+                                        <!-- Data akan diisi via JavaScript -->
+                                        <tr>
+                                            <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                                <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
+                                                <p>Memuat data jadwal...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logs Tab Content -->
+                    <div id="logsTab" class="tab-pane hidden space-y-4">
+                        <!-- Logs akan diisi via JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Inisialisasi
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSchedules();
+            setScheduleType('daily');
+            showTab('schedules');
+        });
+
+        // Tab Management
+        function showTab(tabName) {
+            // Update active tab button
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.dataset.tab === tabName) {
+                    btn.classList.add('border-blue-500', 'text-blue-600');
+                } else {
+                    btn.classList.remove('border-blue-500', 'text-blue-600');
+                }
+            });
+
+            // Show active tab content
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.add('hidden');
+            });
+            
+            const activePane = document.getElementById(`${tabName}Tab`);
+            if (activePane) {
+                activePane.classList.remove('hidden');
+            }
+
+            // Load data if needed
+            if (tabName === 'schedules') loadSchedules();
+            if (tabName === 'logs') loadLogs();
+        }
+
+        // Schedule Type Selection
+        function setScheduleType(type) {
+            document.getElementById('schedule_type').value = type;
+            
+            // Update button styles
+            document.querySelectorAll('.schedule-type-btn').forEach(btn => {
+                if (btn.dataset.type === type) {
+                    btn.classList.add('bg-blue-100', 'border-blue-500', 'text-blue-700');
+                } else {
+                    btn.classList.remove('bg-blue-100', 'border-blue-500', 'text-blue-700');
+                    btn.classList.add('bg-gray-50', 'border-gray-300', 'text-gray-700');
+                }
+            });
+
+            // Show/hide conditional fields
+            const weeklyOptions = document.getElementById('weeklyOptions');
+            const monthlyOptions = document.getElementById('monthlyOptions');
+            
+            weeklyOptions.classList.add('hidden');
+            monthlyOptions.classList.add('hidden');
+            
+            if (type === 'weekly') {
+                weeklyOptions.classList.remove('hidden');
+            } else if (type === 'monthly') {
+                monthlyOptions.classList.remove('hidden');
+            }
+        }
+
+        // Form Submission
+        document.getElementById('scheduleForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {
+                name: formData.get('name'),
+                schedule_type: formData.get('schedule_type'),
+                run_time: formData.get('run_time')
+            };
+
+            // Handle weekly days
+            if (data.schedule_type === 'weekly') {
+                const days = Array.from(formData.getAll('day_of_week')).filter(Boolean);
+                if (days.length > 0) {
+                    data.day_of_week = days.join(',');
+                }
+            }
+
+            // Handle monthly day
+            if (data.schedule_type === 'monthly') {
+                const day = formData.get('day_of_month');
+                if (day) {
+                    data.day_of_month = parseInt(day);
+                }
+            }
+
+            try {
+                const response = await fetch('/api/schedules', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert('Schedule created successfully!');
+                    this.reset();
+                    setScheduleType('daily');
+                    loadSchedules();
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        });
+
+        // Load Schedules
+        async function loadSchedules() {
+            try {
+                const response = await fetch('/api/schedules');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    renderSchedules(result.schedules);
+                    document.getElementById('totalSchedules').innerHTML = 
+                        `<i class="fas fa-calendar-alt mr-1"></i>${result.count} Schedules`;
+                }
+            } catch (error) {
+                console.error('Failed to load schedules:', error);
+            }
+        }
+
+        // Render Schedules Table
+        function renderSchedules(schedules) {
+            const tbody = document.getElementById('schedulesTable');
+            if (schedules.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                            <i class="fas fa-calendar-times text-3xl mb-3"></i>
+                            <p class="text-lg">Belum ada jadwal</p>
+                            <p class="text-sm mt-2">Tambahkan jadwal pertama Anda menggunakan form di samping</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = schedules.map(schedule => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-gray-900">${schedule.name}</div>
+                        <div class="text-sm text-gray-500">ID: ${schedule.id}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-gray-900">${schedule.display_schedule}</div>
+                        <div class="text-xs text-gray-500">${schedule.schedule_type}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${schedule.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                            <i class="fas fa-${schedule.is_active ? 'play' : 'pause'} mr-1"></i>
+                            ${schedule.is_active ? 'Aktif' : 'Nonaktif'}
+                        </span>
+                        ${schedule.is_running ? 
+                            '<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"><i class="fas fa-sync-alt fa-spin mr-1"></i>Running</span>' : 
+                            ''
+                        }
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                        ${new Date(schedule.created_at).toLocaleDateString('id-ID')}
+                    </td>
+                    <td class="px-6 py-4 text-sm font-medium">
+                        <button onclick="toggleSchedule(${schedule.id})"
+                                class="text-${schedule.is_active ? 'orange' : 'green'}-600 hover:text-${schedule.is_active ? 'orange' : 'green'}-900 mr-3">
+                            <i class="fas fa-${schedule.is_active ? 'pause' : 'play'}"></i>
+                        </button>
+                        <button onclick="viewLogs(${schedule.id})"
+                                class="text-blue-600 hover:text-blue-900 mr-3">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        <button onclick="deleteSchedule(${schedule.id})"
+                                class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Schedule Actions
+        async function toggleSchedule(scheduleId) {
+            if (!confirm('Apakah Anda yakin ingin mengubah status schedule ini?')) return;
+            
+            try {
+                const response = await fetch(`/api/schedules/${scheduleId}/toggle`, {
+                    method: 'PATCH'
+                });
+                
+                if (response.ok) {
+                    loadSchedules();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function deleteSchedule(scheduleId) {
+            if (!confirm('Apakah Anda yakin ingin menghapus schedule ini? Semua logs terkait juga akan dihapus.')) return;
+            
+            try {
+                const response = await fetch(`/api/schedules/${scheduleId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    loadSchedules();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function viewLogs(scheduleId) {
+            // Implement log viewing
+            alert(`View logs for schedule ${scheduleId} - Coming Soon!`);
+        }
+
+        function refreshSchedules() {
+            loadSchedules();
+        }
+    </script>
+</body>
+</html>
