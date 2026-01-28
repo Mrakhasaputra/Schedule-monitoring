@@ -3,157 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Printing Task Scheduler</title>
+    <title>Task Scheduler</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
     <style>
-        .tab-active {
-            @apply bg-blue-500 text-white;
-        }
-        .fade-in {
-            animation: fadeIn 0.3s ease-in;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .tab-active { border-color: #3b82f6; color: #3b82f6; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; }
+        .status-active { background: #d1fae5; color: #065f46; }
+        .status-inactive { background: #f3f4f6; color: #6b7280; }
+        .midnight-badge { background: #fef3c7; color: #92400e; }
+        .blink { animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-7xl">
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-6">
         <!-- Header -->
-        <header class="mb-10 text-center">
-            <h1 class="text-4xl font-bold text-gray-800 mb-3">
-                <i class="fas fa-print mr-3 text-blue-600"></i>
-                Dynamic Printing Task Scheduler
+        <div class="mb-6 text-center">
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-calendar-alt text-blue-600 mr-2"></i>Task Scheduler
             </h1>
-            <p class="text-gray-600 text-lg">Kelola jadwal eksekusi task printing secara dinamis</p>
-            <div class="mt-4 flex justify-center space-x-4">
-                <span class="px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm">
-                    <i class="fas fa-database mr-1"></i> Supabase Connected
-                </span>
-                <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm">
-                    <i class="fas fa-clock mr-1"></i> APScheduler Ready
+            <p class="text-gray-600">Kelola jadwal scraping & printing otomatis</p>
+            
+            <!-- Midnight Status Badge -->
+            <div class="mt-2 inline-block" id="midnightStatusContainer">
+                <span id="midnightStatus" class="midnight-badge px-3 py-1 rounded-full text-sm font-medium">
+                    <i class="fas fa-moon mr-1"></i>Loading midnight status...
                 </span>
             </div>
-        </header>
+        </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <!-- Form Section -->
             <div class="lg:col-span-1">
-                <div class="bg-white rounded-2xl shadow-xl p-6 sticky top-6 border border-gray-200">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-6 pb-4 border-b border-gray-200">
-                        <i class="fas fa-plus-circle mr-2 text-green-500"></i>Tambah Jadwal Baru
+                <div class="bg-white rounded-lg shadow p-4 sticky top-4">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-plus text-green-500 mr-2"></i>Tambah Jadwal
                     </h2>
                     
-                    <form id="scheduleForm" class="space-y-5">
-                        <!-- Task Name -->
+                    <form id="scheduleForm" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-tag mr-1"></i>Nama Task
-                            </label>
-                            <input type="text" name="name" required
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                   placeholder="Contoh: Print Laporan Harian">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Task</label>
+                            <input type="text" name="name" required class="w-full px-3 py-2 border rounded-lg" placeholder="Contoh: Scrape Harian">
                         </div>
 
-                        <!-- Schedule Type -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-calendar-alt mr-1"></i>Tipe Jadwal
-                            </label>
-                            <div class="grid grid-cols-3 gap-2">
-                                <button type="button" onclick="setScheduleType('daily')"
-                                        class="schedule-type-btn px-4 py-3 border rounded-lg text-center transition"
-                                        data-type="daily">
-                                    <i class="fas fa-sun mr-1"></i>Harian
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Task</label>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="setTaskType('scraping')" class="task-type-btn flex-1 py-2 border rounded-lg" data-type="scraping">
+                                    <i class="fas fa-globe mr-1"></i>Scraping
                                 </button>
-                                <button type="button" onclick="setScheduleType('weekly')"
-                                        class="schedule-type-btn px-4 py-3 border rounded-lg text-center transition"
-                                        data-type="weekly">
-                                    <i class="fas fa-calendar-week mr-1"></i>Mingguan
+                                <button type="button" onclick="setTaskType('print')" class="task-type-btn flex-1 py-2 border rounded-lg" data-type="print">
+                                    <i class="fas fa-print mr-1"></i>Print
                                 </button>
-                                <button type="button" onclick="setScheduleType('monthly')"
-                                        class="schedule-type-btn px-4 py-3 border rounded-lg text-center transition"
-                                        data-type="monthly">
-                                    <i class="fas fa-calendar-day mr-1"></i>Bulanan
-                                </button>
+                            </div>
+                            <input type="hidden" name="task_type" id="task_type" value="scraping">
+                        </div>
+
+                        <div id="mediaChannelSection">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Media Channel</label>
+                            <select name="media_channel_id" id="media_channel_id" class="w-full px-3 py-2 border rounded-lg">
+                                <option value="">Pilih...</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipe Jadwal</label>
+                            <div class="flex gap-2">
+                                <button type="button" onclick="setScheduleType('daily')" class="schedule-type-btn flex-1 py-2 border rounded-lg" data-type="daily">Harian</button>
+                                <button type="button" onclick="setScheduleType('weekly')" class="schedule-type-btn flex-1 py-2 border rounded-lg" data-type="weekly">Mingguan</button>
+                                <button type="button" onclick="setScheduleType('monthly')" class="schedule-type-btn flex-1 py-2 border rounded-lg" data-type="monthly">Bulanan</button>
                             </div>
                             <input type="hidden" name="schedule_type" id="schedule_type" value="daily">
                         </div>
 
-                        <!-- Time Input -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i class="fas fa-clock mr-1"></i>Waktu Eksekusi
-                            </label>
-                            <input type="time" name="run_time" required
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                   value="09:00">
-                        </div>
-
-                        <!-- Day of Week (Conditional) -->
-                        <div id="weeklyOptions" class="hidden space-y-3 fade-in">
-                            <label class="block text-sm font-medium text-gray-700">
-                                <i class="fas fa-calendar-day mr-1"></i>Hari dalam Minggu
-                            </label>
-                            <div class="grid grid-cols-4 gap-2">
-                                <label class="inline-flex items-center">
-                                    <input type="checkbox" name="day_of_week" value="mon" class="rounded">
-                                    <span class="ml-2 text-sm">Senin</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="checkbox" name="day_of_week" value="tue" class="rounded">
-                                    <span class="ml-2 text-sm">Selasa</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="checkbox" name="day_of_week" value="wed" class="rounded">
-                                    <span class="ml-2 text-sm">Rabu</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="checkbox" name="day_of_week" value="thu" class="rounded">
-                                    <span class="ml-2 text-sm">Kamis</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="checkbox" name="day_of_week" value="fri" class="rounded">
-                                    <span class="ml-2 text-sm">Jumat</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="checkbox" name="day_of_week" value="sat" class="rounded">
-                                    <span class="ml-2 text-sm">Sabtu</span>
-                                </label>
-                                <label class="inline-flex items-center">
-                                    <input type="checkbox" name="day_of_week" value="sun" class="rounded">
-                                    <span class="ml-2 text-sm">Minggu</span>
-                                </label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Waktu Eksekusi</label>
+                            <div class="relative">
+                                <input type="time" name="run_time" required class="w-full px-3 py-2 border rounded-lg" value="09:00">
+                                <div class="absolute right-3 top-2">
+                                    <button type="button" onclick="setMidnightTime()" class="text-xs text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-moon mr-1"></i>00:00
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Day of Month (Conditional) -->
-                        <div id="monthlyOptions" class="hidden space-y-3 fade-in">
-                            <label class="block text-sm font-medium text-gray-700">
-                                <i class="fas fa-calendar mr-1"></i>Tanggal dalam Bulan
-                            </label>
-                            <input type="number" name="day_of_month" min="1" max="31"
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-                                   placeholder="1-31">
+                        <div id="weeklyOptions" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Hari</label>
+                            <div class="grid grid-cols-3 gap-1">
+                                <label class="flex items-center"><input type="checkbox" name="day_of_week" value="mon" class="mr-1"><span class="text-sm">Senin</span></label>
+                                <label class="flex items-center"><input type="checkbox" name="day_of_week" value="tue" class="mr-1"><span class="text-sm">Selasa</span></label>
+                                <label class="flex items-center"><input type="checkbox" name="day_of_week" value="wed" class="mr-1"><span class="text-sm">Rabu</span></label>
+                                <label class="flex items-center"><input type="checkbox" name="day_of_week" value="thu" class="mr-1"><span class="text-sm">Kamis</span></label>
+                                <label class="flex items-center"><input type="checkbox" name="day_of_week" value="fri" class="mr-1"><span class="text-sm">Jumat</span></label>
+                                <label class="flex items-center"><input type="checkbox" name="day_of_week" value="sat" class="mr-1"><span class="text-sm">Sabtu</span></label>
+                                <label class="flex items-center"><input type="checkbox" name="day_of_week" value="sun" class="mr-1"><span class="text-sm">Minggu</span></label>
+                            </div>
                         </div>
 
-                        <!-- Submit Button -->
-                        <button type="submit"
-                                class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-300 transform hover:-translate-y-0.5 shadow-lg">
+                        <div id="monthlyOptions" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                            <input type="number" name="day_of_month" min="1" max="31" class="w-full px-3 py-2 border rounded-lg" placeholder="1-31">
+                        </div>
+
+                        <div class="flex items-center">
+                            <input type="checkbox" name="is_active" id="is_active" checked class="mr-2">
+                            <label for="is_active" class="text-sm text-gray-700">Aktif setelah dibuat</label>
+                        </div>
+
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition">
                             <i class="fas fa-plus mr-2"></i>Tambah Jadwal
                         </button>
                     </form>
 
-                    <!-- Status Scheduler -->
-                    <div class="mt-8 pt-6 border-t border-gray-200">
-                        <h3 class="text-sm font-medium text-gray-700 mb-3">
-                            <i class="fas fa-info-circle mr-1"></i>Status Scheduler
+                    <div class="mt-4 pt-4 border-t">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-info-circle mr-1"></i>Status Sistem
                         </h3>
-                        <div id="schedulerStatus" class="space-y-2">
-                            <!-- Status akan di-update via JavaScript -->
+                        <div id="schedulerStatus" class="text-sm space-y-1">
+                            <div class="flex justify-between"><span>Server:</span><span id="serverStatus">Loading...</span></div>
+                            <div class="flex justify-between"><span>Scheduler:</span><span id="schedulerRunning">Loading...</span></div>
+                            <div class="flex justify-between"><span>Jobs:</span><span id="jobsCount">0</span></div>
+                            <div class="flex justify-between"><span>Waktu:</span><span id="serverTime">Loading...</span></div>
+                        </div>
+                        
+                        <div class="mt-3 pt-3 border-t">
+                            <button onclick="checkMidnightStatus()" class="w-full text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-800 py-1 px-3 rounded mb-2">
+                                <i class="fas fa-moon mr-1"></i>Check Midnight Schedules
+                            </button>
+                            <button onclick="forceRunMidnight()" class="w-full text-sm bg-red-100 hover:bg-red-200 text-red-800 py-1 px-3 rounded">
+                                <i class="fas fa-bolt mr-1"></i>Force Run Midnight
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -161,311 +144,1218 @@
 
             <!-- Main Content -->
             <div class="lg:col-span-3">
-                <!-- Tabs Navigation -->
-                <div class="mb-6">
-                    <div class="border-b border-gray-200">
-                        <nav class="-mb-px flex space-x-8">
-                            <button onclick="showTab('schedules')"
-                                    class="tab-btn py-3 px-4 font-medium text-sm border-b-2 border-transparent hover:text-blue-600 hover:border-blue-300 transition"
-                                    data-tab="schedules">
-                                <i class="fas fa-list mr-2"></i>Semua Jadwal
-                            </button>
-                            <button onclick="showTab('active')"
-                                    class="tab-btn py-3 px-4 font-medium text-sm border-b-2 border-transparent hover:text-blue-600 hover:border-blue-300 transition"
-                                    data-tab="active">
-                                <i class="fas fa-play-circle mr-2"></i>Aktif
-                            </button>
-                            <button onclick="showTab('logs')"
-                                    class="tab-btn py-3 px-4 font-medium text-sm border-b-2 border-transparent hover:text-blue-600 hover:border-blue-300 transition"
-                                    data-tab="logs">
-                                <i class="fas fa-history mr-2"></i>Logs
-                            </button>
-                        </nav>
+                <!-- Tabs -->
+                <div class="mb-4 border-b">
+                    <div class="flex space-x-4 overflow-x-auto">
+                        <button onclick="showTab('schedules')" class="tab-btn py-2 px-4 font-medium text-sm border-b-2 tab-active" data-tab="schedules">
+                            <i class="fas fa-list mr-1"></i>Jadwal
+                        </button>
+                        <button onclick="showTab('logs')" class="tab-btn py-2 px-4 font-medium text-sm border-b-2 border-transparent" data-tab="logs">
+                            <i class="fas fa-history mr-1"></i>Logs
+                        </button>
+                        <button onclick="showTab('media')" class="tab-btn py-2 px-4 font-medium text-sm border-b-2 border-transparent" data-tab="media">
+                            <i class="fas fa-tv mr-1"></i>Media
+                        </button>
+                        <button onclick="showTab('monitor')" class="tab-btn py-2 px-4 font-medium text-sm border-b-2 border-transparent" data-tab="monitor">
+                            <i class="fas fa-chart-bar mr-1"></i>Monitor
+                        </button>
+                        <button onclick="showTab('midnight')" class="tab-btn py-2 px-4 font-medium text-sm border-b-2 border-transparent" data-tab="midnight">
+                            <i class="fas fa-moon mr-1"></i>Midnight
+                        </button>
                     </div>
                 </div>
 
                 <!-- Tab Content -->
-                <div id="tabContent" class="space-y-6">
-                    <!-- Schedules Tab Content -->
-                    <div id="schedulesTab" class="tab-pane fade-in">
-                        <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
-                            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                                <div class="flex justify-between items-center">
-                                    <h3 class="text-lg font-semibold text-gray-800">
-                                        <i class="fas fa-calendar-check mr-2"></i>Daftar Jadwal
-                                    </h3>
-                                    <div class="flex items-center space-x-4">
-                                        <span id="totalSchedules" class="text-sm text-gray-600">
-                                            <i class="fas fa-spinner fa-spin mr-1"></i>Loading...
-                                        </span>
-                                        <button onclick="refreshSchedules()"
-                                                class="text-blue-600 hover:text-blue-800 transition">
-                                            <i class="fas fa-sync-alt"></i>
-                                        </button>
-                                    </div>
+                <div id="tabContent">
+                    <!-- Schedules Tab -->
+                    <div id="schedulesTab" class="fade-in">
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <div class="px-4 py-3 border-b bg-gray-50 flex justify-between items-center">
+                                <h3 class="font-medium text-gray-800">
+                                    <i class="fas fa-calendar-check mr-2"></i>Daftar Jadwal
+                                </h3>
+                                <div class="flex items-center gap-2">
+                                    <span id="totalSchedules" class="text-sm text-gray-600">Loading...</span>
+                                    <button onclick="refreshSchedules()" class="text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
                                 </div>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
                                         <tr>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jadwal</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Task</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Waktu</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Aksi</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="schedulesTable" class="bg-white divide-y divide-gray-200">
+                                    <tbody id="schedulesTable" class="divide-y divide-gray-200">
                                         <!-- Data akan diisi via JavaScript -->
-                                        <tr>
-                                            <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                                                <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
-                                                <p>Memuat data jadwal...</p>
-                                            </td>
-                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Logs Tab Content -->
-                    <div id="logsTab" class="tab-pane hidden space-y-4">
-                        <!-- Logs akan diisi via JavaScript -->
+                    <!-- Logs Tab -->
+                    <div id="logsTab" class="hidden">
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <div class="px-4 py-3 border-b bg-gray-50">
+                                <h3 class="font-medium text-gray-800">
+                                    <i class="fas fa-history mr-2"></i>Execution Logs
+                                </h3>
+                            </div>
+                            <div class="overflow-x-auto max-h-96">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Waktu</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Task</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Pesan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="logsTable" class="divide-y divide-gray-200">
+                                        <!-- Logs akan diisi via JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Media Channels Tab -->
+                    <div id="mediaTab" class="hidden">
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <div class="px-4 py-3 border-b bg-gray-50">
+                                <h3 class="font-medium text-gray-800">
+                                    <i class="fas fa-tv mr-2"></i>Media Channels
+                                </h3>
+                            </div>
+                            <div class="p-4">
+                                <div id="mediaChannelsList">
+                                    <!-- Media channels akan diisi via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monitor Tab -->
+                    <div id="monitorTab" class="hidden">
+                        <div class="bg-white rounded-lg shadow p-4">
+                            <h3 class="font-medium text-gray-800 mb-4">
+                                <i class="fas fa-chart-bar mr-2"></i>System Monitor
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    <div class="text-sm text-blue-600">Total Schedules</div>
+                                    <div class="text-2xl font-bold" id="monitorTotalSchedules">0</div>
+                                </div>
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <div class="text-sm text-green-600">Active Schedules</div>
+                                    <div class="text-2xl font-bold" id="monitorActiveSchedules">0</div>
+                                </div>
+                                <div class="bg-purple-50 p-4 rounded-lg">
+                                    <div class="text-sm text-purple-600">Total Logs</div>
+                                    <div class="text-2xl font-bold" id="monitorTotalLogs">0</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div class="bg-yellow-50 p-4 rounded-lg">
+                                    <div class="text-sm text-yellow-600">Midnight Schedules</div>
+                                    <div class="text-2xl font-bold" id="monitorMidnightSchedules">0</div>
+                                </div>
+                                <div class="bg-red-50 p-4 rounded-lg">
+                                    <div class="text-sm text-red-600">Missed Executions</div>
+                                    <div class="text-2xl font-bold" id="monitorMissedExecutions">0</div>
+                                </div>
+                            </div>
+                            <div class="text-sm text-gray-600 space-y-2">
+                                <p><i class="fas fa-clock mr-2"></i>Server Time: <span id="monitorServerTime" class="font-medium">Loading...</span></p>
+                                <p><i class="fas fa-database mr-2"></i>Database: <span id="monitorDatabaseStatus" class="font-medium">Loading...</span></p>
+                                <p><i class="fas fa-cogs mr-2"></i>Scheduler: <span id="monitorSchedulerStatus" class="font-medium">Loading...</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Midnight Tab -->
+                    <div id="midnightTab" class="hidden">
+                        <div class="bg-white rounded-lg shadow overflow-hidden">
+                            <div class="px-4 py-3 border-b bg-gray-50 flex justify-between items-center">
+                                <h3 class="font-medium text-gray-800">
+                                    <i class="fas fa-moon mr-2"></i>Midnight Schedules Monitor
+                                </h3>
+                                <div class="flex gap-2">
+                                    <button onclick="refreshMidnightStatus()" class="text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                    <button onclick="forceRunMidnight()" class="text-red-600 hover:text-red-800">
+                                        <i class="fas fa-bolt"></i> Force Run
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <div class="mb-4">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="font-medium text-gray-700">Midnight Status</h4>
+                                        <span id="midnightSummary" class="text-sm text-gray-600">Loading...</span>
+                                    </div>
+                                    <div id="midnightStatusCard" class="border rounded-lg p-4">
+                                        <div class="text-center py-8">
+                                            <i class="fas fa-spinner fa-spin text-gray-400 text-2xl mb-2"></i>
+                                            <p class="text-gray-500">Loading midnight schedules...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="midnightSchedulesList" class="space-y-3">
+                                    <!-- Midnight schedules will be populated here -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript -->
+    <!-- Modal Run Now -->
+    <div id="runNowModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96">
+            <h3 class="text-lg font-semibold mb-4" id="runNowTitle"></h3>
+            <p class="text-gray-600 mb-6">Jalankan task ini sekarang?</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeRunNowModal()" class="px-4 py-2 border rounded-lg">Batal</button>
+                <button onclick="executeRunNow()" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Jalankan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Force Run Midnight -->
+    <div id="forceMidnightModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96">
+            <h3 class="text-lg font-semibold mb-4">
+                <i class="fas fa-exclamation-triangle text-yellow-500 mr-2"></i>Force Run Midnight Schedules
+            </h3>
+            <p class="text-gray-600 mb-4">Force run semua schedule yang dijadwalkan jam 00:00?</p>
+            <p class="text-sm text-red-600 mb-6">⚠️ Aksi ini akan mengeksekusi semua task midnight secara manual.</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeForceMidnightModal()" class="px-4 py-2 border rounded-lg">Batal</button>
+                <button onclick="confirmForceRunMidnight()" class="px-4 py-2 bg-red-600 text-white rounded-lg">Force Run</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="notification" class="hidden fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50"></div>
+
     <script>
-        // Inisialisasi
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        let currentScheduleId = null;
+        let currentScheduleName = null;
+        let mediaChannels = [];
+        let midnightSchedules = [];
+
         document.addEventListener('DOMContentLoaded', function() {
-            loadSchedules();
+            setTaskType('scraping');
             setScheduleType('daily');
-            showTab('schedules');
+            loadSchedules();
+            loadMediaChannels();
+            loadLogs();
+            updateSystemStatus();
+            checkMidnightStatus();
+            
+            // Update every 5 seconds
+            setInterval(updateSystemStatus, 5000);
+            // Update midnight status every 30 seconds
+            setInterval(checkMidnightStatus, 30000);
         });
 
-        // Tab Management
-        function showTab(tabName) {
-            // Update active tab button
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                if (btn.dataset.tab === tabName) {
-                    btn.classList.add('border-blue-500', 'text-blue-600');
+        // ============================================
+        // FORM CONTROLS
+        // ============================================
+        function setTaskType(type) {
+            document.getElementById('task_type').value = type;
+            document.querySelectorAll('.task-type-btn').forEach(btn => {
+                if (btn.dataset.type === type) {
+                    btn.classList.add('border-blue-500', 'bg-blue-50', 'text-blue-700');
+                    btn.classList.remove('border-gray-300', 'bg-white', 'text-gray-700');
                 } else {
-                    btn.classList.remove('border-blue-500', 'text-blue-600');
+                    btn.classList.remove('border-blue-500', 'bg-blue-50', 'text-blue-700');
+                    btn.classList.add('border-gray-300', 'bg-white', 'text-gray-700');
+                }
+            });
+            
+            const mediaSection = document.getElementById('mediaChannelSection');
+            if (type === 'scraping') {
+                mediaSection.classList.remove('hidden');
+            } else {
+                mediaSection.classList.add('hidden');
+            }
+        }
+
+        function setScheduleType(type) {
+            document.getElementById('schedule_type').value = type;
+            document.querySelectorAll('.schedule-type-btn').forEach(btn => {
+                if (btn.dataset.type === type) {
+                    btn.classList.add('border-blue-500', 'bg-blue-50', 'text-blue-700');
+                    btn.classList.remove('border-gray-300', 'bg-white', 'text-gray-700');
+                } else {
+                    btn.classList.remove('border-blue-500', 'bg-blue-50', 'text-blue-700');
+                    btn.classList.add('border-gray-300', 'bg-white', 'text-gray-700');
                 }
             });
 
-            // Show active tab content
-            document.querySelectorAll('.tab-pane').forEach(pane => {
+            document.getElementById('weeklyOptions').classList.add('hidden');
+            document.getElementById('monthlyOptions').classList.add('hidden');
+            
+            if (type === 'weekly') {
+                document.getElementById('weeklyOptions').classList.remove('hidden');
+            } else if (type === 'monthly') {
+                document.getElementById('monthlyOptions').classList.remove('hidden');
+            }
+        }
+
+        function setMidnightTime() {
+            document.querySelector('input[name="run_time"]').value = '00:00';
+            showNotification('Waktu diatur ke 00:00', 'info');
+        }
+
+        // ============================================
+        // TAB MANAGEMENT
+        // ============================================
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.dataset.tab === tabName) {
+                    btn.classList.add('tab-active');
+                    btn.classList.remove('border-transparent');
+                } else {
+                    btn.classList.remove('tab-active');
+                    btn.classList.add('border-transparent');
+                }
+            });
+
+            document.querySelectorAll('[id$="Tab"]').forEach(pane => {
                 pane.classList.add('hidden');
             });
             
-            const activePane = document.getElementById(`${tabName}Tab`);
-            if (activePane) {
-                activePane.classList.remove('hidden');
-            }
-
-            // Load data if needed
-            if (tabName === 'schedules') loadSchedules();
+            document.getElementById(`${tabName}Tab`).classList.remove('hidden');
+            
             if (tabName === 'logs') loadLogs();
+            if (tabName === 'media') renderMediaChannels();
+            if (tabName === 'monitor') updateMonitor();
+            if (tabName === 'midnight') loadMidnightStatus();
         }
 
-        // Schedule Type Selection
-        function setScheduleType(type) {
-            document.getElementById('schedule_type').value = type;
-            
-            // Update button styles
-            document.querySelectorAll('.schedule-type-btn').forEach(btn => {
-                if (btn.dataset.type === type) {
-                    btn.classList.add('bg-blue-100', 'border-blue-500', 'text-blue-700');
-                } else {
-                    btn.classList.remove('bg-blue-100', 'border-blue-500', 'text-blue-700');
-                    btn.classList.add('bg-gray-50', 'border-gray-300', 'text-gray-700');
-                }
-            });
-
-            // Show/hide conditional fields
-            const weeklyOptions = document.getElementById('weeklyOptions');
-            const monthlyOptions = document.getElementById('monthlyOptions');
-            
-            weeklyOptions.classList.add('hidden');
-            monthlyOptions.classList.add('hidden');
-            
-            if (type === 'weekly') {
-                weeklyOptions.classList.remove('hidden');
-            } else if (type === 'monthly') {
-                monthlyOptions.classList.remove('hidden');
-            }
-        }
-
-        // Form Submission
+        // ============================================
+        // FORM SUBMISSION
+        // ============================================
         document.getElementById('scheduleForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...';
+            submitBtn.disabled = true;
             
             const formData = new FormData(this);
             const data = {
                 name: formData.get('name'),
                 schedule_type: formData.get('schedule_type'),
-                run_time: formData.get('run_time')
+                run_time: formData.get('run_time'),
+                is_active: formData.get('is_active') === 'on'
             };
+
+            // Add media channel if scraping
+            if (formData.get('task_type') === 'scraping') {
+                const mediaChannelId = formData.get('media_channel_id');
+                if (mediaChannelId) data.media_channel_id = parseInt(mediaChannelId);
+            }
 
             // Handle weekly days
             if (data.schedule_type === 'weekly') {
                 const days = Array.from(formData.getAll('day_of_week')).filter(Boolean);
-                if (days.length > 0) {
-                    data.day_of_week = days.join(',');
-                }
+                if (days.length > 0) data.day_of_week = days.join(',');
             }
 
             // Handle monthly day
             if (data.schedule_type === 'monthly') {
                 const day = formData.get('day_of_month');
-                if (day) {
-                    data.day_of_month = parseInt(day);
-                }
+                if (day) data.day_of_month = parseInt(day);
             }
 
             try {
                 const response = await fetch('/api/schedules', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
 
                 const result = await response.json();
                 
-                if (response.ok) {
-                    alert('Schedule created successfully!');
+                if (response.ok && result.success) {
+                    showNotification('Jadwal berhasil dibuat!');
                     this.reset();
+                    setTaskType('scraping');
                     setScheduleType('daily');
                     loadSchedules();
+                    
+                    // Special message for midnight schedule
+                    if (data.run_time === '00:00') {
+                        showNotification('🌙 Schedule 00:00 telah dibuat!', 'info');
+                    }
                 } else {
-                    alert('Error: ' + result.error);
+                    showNotification('Error: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (error) {
-                alert('Network error: ' + error.message);
+                showNotification('Network error: ' + error.message, 'error');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
             }
         });
 
-        // Load Schedules
+        // ============================================
+        // SCHEDULES MANAGEMENT
+        // ============================================
+        // Update di index.html - test dengan endpoint sederhana
         async function loadSchedules() {
             try {
-                const response = await fetch('/api/schedules');
-                const result = await response.json();
+                console.log("Testing API connection...");
                 
-                if (response.ok) {
-                    renderSchedules(result.schedules);
-                    document.getElementById('totalSchedules').innerHTML = 
-                        `<i class="fas fa-calendar-alt mr-1"></i>${result.count} Schedules`;
+                // Test 1: Health endpoint
+                const healthResponse = await fetch('/api/schedules/health');
+                console.log("Health status:", healthResponse.status);
+                
+                // Test 2: Basic schedules endpoint
+                const response = await fetch('/api/schedules');
+                console.log("Schedules status:", response.status);
+                
+                if (!response.ok) {
+                    // Try test-db endpoint
+                    const dbTest = await fetch('/api/schedules/test-db');
+                    console.log("DB test status:", dbTest.status);
+                    
+                    // Try test-models endpoint
+                    const modelsTest = await fetch('/api/schedules/test-models');
+                    console.log("Models test status:", modelsTest.status);
+                    
+                    throw new Error(`API Error: Schedules=${response.status}, DB=${dbTest.status}, Models=${modelsTest.status}`);
+                }
+                
+                const result = await response.json();
+                console.log("API Response:", result);
+                
+                if (result.success) {
+                    renderSchedules(result.schedules || []);
+                    document.getElementById('totalSchedules').textContent = `${result.count || 0} schedules`;
+                } else {
+                    console.error('API returned success=false:', result.error);
+                    showNotification('API Error: ' + (result.error || 'Unknown error'), 'error');
                 }
             } catch (error) {
                 console.error('Failed to load schedules:', error);
+                
+                // Show debug info
+                const tbody = document.getElementById('schedulesTable');
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="px-4 py-8 text-center">
+                                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                    <i class="fas fa-exclamation-triangle text-red-500 text-2xl mb-2"></i>
+                                    <h3 class="font-medium text-red-800">API Connection Error</h3>
+                                    <p class="text-sm text-red-600 mt-1">${error.message}</p>
+                                    <div class="mt-3 space-y-2">
+                                        <button onclick="testApiEndpoints()" class="text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1 rounded">
+                                            <i class="fas fa-vial mr-1"></i>Test API Endpoints
+                                        </button>
+                                        <button onclick="location.reload()" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded ml-2">
+                                            <i class="fas fa-sync-alt mr-1"></i>Refresh
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                showNotification('Failed to connect to API: ' + error.message, 'error');
             }
         }
 
-        // Render Schedules Table
+        // Function untuk test API endpoints
+        async function testApiEndpoints() {
+            try {
+                const endpoints = [
+                    '/api/schedules/health',
+                    '/api/schedules/test-db', 
+                    '/api/schedules/test-models',
+                    '/api/schedules'
+                ];
+                
+                let results = [];
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(endpoint);
+                        const data = await response.json();
+                        results.push({
+                            endpoint,
+                            status: response.status,
+                            success: data.success || false,
+                            message: data.debug || data.error || 'OK'
+                        });
+                    } catch (e) {
+                        results.push({
+                            endpoint,
+                            status: 'error',
+                            success: false,
+                            message: e.message
+                        });
+                    }
+                }
+                
+                // Show results
+                console.table(results);
+                alert('API Test Results:\n' + results.map(r => 
+                    `${r.endpoint}: ${r.status} - ${r.message}`
+                ).join('\n'));
+                
+            } catch (error) {
+                console.error('Test failed:', error);
+                alert('Test failed: ' + error.message);
+            }
+        }
+        // Update checkMidnightStatus function
+        async function checkMidnightStatus() {
+            try {
+                const response = await fetch('/api/schedules/midnight-check');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    midnightSchedules = result.midnight_schedules || [];
+                    updateMidnightStatusUI(result);
+                } else {
+                    document.getElementById('midnightStatus').innerHTML = 
+                        `<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">API Error</span>`;
+                    console.error('Midnight check API error:', result.error);
+                }
+            } catch (error) {
+                console.error('Failed to check midnight status:', error);
+                document.getElementById('midnightStatus').innerHTML = 
+                    `<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">Connection Error</span>`;
+            }
+        }
         function renderSchedules(schedules) {
             const tbody = document.getElementById('schedulesTable');
-            if (schedules.length === 0) {
+            if (!tbody) return;
+            
+            if (!schedules || schedules.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                            <i class="fas fa-calendar-times text-3xl mb-3"></i>
-                            <p class="text-lg">Belum ada jadwal</p>
-                            <p class="text-sm mt-2">Tambahkan jadwal pertama Anda menggunakan form di samping</p>
+                        <td colspan="4" class="px-4 py-8 text-center text-gray-500">
+                            <i class="fas fa-calendar-times text-2xl mb-2"></i>
+                            <p>Belum ada jadwal</p>
                         </td>
                     </tr>
                 `;
                 return;
             }
 
-            tbody.innerHTML = schedules.map(schedule => `
-                <tr class="hover:bg-gray-50 transition">
-                    <td class="px-6 py-4">
-                        <div class="font-medium text-gray-900">${schedule.name}</div>
-                        <div class="text-sm text-gray-500">ID: ${schedule.id}</div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-gray-900">${schedule.display_schedule}</div>
-                        <div class="text-xs text-gray-500">${schedule.schedule_type}</div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${schedule.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
-                            <i class="fas fa-${schedule.is_active ? 'play' : 'pause'} mr-1"></i>
-                            ${schedule.is_active ? 'Aktif' : 'Nonaktif'}
-                        </span>
-                        ${schedule.is_running ? 
-                            '<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"><i class="fas fa-sync-alt fa-spin mr-1"></i>Running</span>' : 
-                            ''
-                        }
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-500">
-                        ${new Date(schedule.created_at).toLocaleDateString('id-ID')}
-                    </td>
-                    <td class="px-6 py-4 text-sm font-medium">
-                        <button onclick="toggleSchedule(${schedule.id})"
-                                class="text-${schedule.is_active ? 'orange' : 'green'}-600 hover:text-${schedule.is_active ? 'orange' : 'green'}-900 mr-3">
-                            <i class="fas fa-${schedule.is_active ? 'pause' : 'play'}"></i>
-                        </button>
-                        <button onclick="viewLogs(${schedule.id})"
-                                class="text-blue-600 hover:text-blue-900 mr-3">
-                            <i class="fas fa-history"></i>
-                        </button>
-                        <button onclick="deleteSchedule(${schedule.id})"
-                                class="text-red-600 hover:text-red-900">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
+            tbody.innerHTML = schedules.map(schedule => {
+                const isActive = schedule.is_active !== false;
+                const isScraping = schedule.media_channel_id !== null;
+                const mediaChannel = schedule.media_channel;
+                const isMidnight = schedule.run_time === '00:00';
+                const executionCount = schedule.execution_count || 0;
+                const lastExecuted = schedule.last_executed ? 
+                    new Date(schedule.last_executed).toLocaleString('id-ID') : 'Belum pernah';
+                
+                return `
+                    <tr class="hover:bg-gray-50 ${isMidnight ? 'bg-yellow-50' : ''}">
+                        <td class="px-4 py-3">
+                            <div class="font-medium text-gray-900 flex items-center">
+                                ${isScraping ? '<i class="fas fa-globe text-purple-600 mr-2"></i>' : '<i class="fas fa-print text-blue-600 mr-2"></i>'}
+                                ${schedule.name || 'Unnamed'}
+                                ${isMidnight ? '<span class="ml-2 midnight-badge text-xs px-2 py-1 rounded">🌙 00:00</span>' : ''}
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                <div>${schedule.schedule_type || 'unknown'} • ${schedule.run_time || ''}</div>
+                                <div>Executions: ${executionCount} • Last: ${lastExecuted}</div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="text-gray-900">${schedule.display_schedule || schedule.run_time || '-'}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="status-badge ${isActive ? 'status-active' : 'status-inactive'}">
+                                <i class="fas fa-${isActive ? 'play' : 'pause'} mr-1"></i>
+                                ${isActive ? 'Aktif' : 'Nonaktif'}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex gap-2">
+                                <button onclick="runScheduleNow(${schedule.id}, '${schedule.name.replace(/'/g, "\\'")}')" 
+                                        class="text-green-600 hover:text-green-800" title="Run Now">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button onclick="toggleSchedule(${schedule.id})" 
+                                        class="text-${isActive ? 'orange' : 'green'}-600 hover:text-${isActive ? 'orange' : 'green'}-800" 
+                                        title="${isActive ? 'Nonaktifkan' : 'Aktifkan'}">
+                                    <i class="fas fa-${isActive ? 'pause' : 'play'}"></i>
+                                </button>
+                                <button onclick="viewScheduleLogs(${schedule.id})" 
+                                        class="text-blue-600 hover:text-blue-800" title="View Logs">
+                                    <i class="fas fa-history"></i>
+                                </button>
+                                <button onclick="deleteSchedule(${schedule.id})" 
+                                        class="text-red-600 hover:text-red-800" title="Hapus">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ============================================
+        // LOGS MANAGEMENT
+        // ============================================
+        async function loadLogs() {
+            try {
+                const response = await fetch('/api/schedules/logs');
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderLogs(result.logs || []);
+                    
+                    // Update monitor
+                    if (document.getElementById('monitorTotalLogs')) {
+                        document.getElementById('monitorTotalLogs').textContent = result.count || 0;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load logs:', error);
+            }
+        }
+
+        function renderLogs(logs) {
+            const tbody = document.getElementById('logsTable');
+            if (!tbody) return;
+            
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-4 py-8 text-center text-gray-500">
+                            <i class="fas fa-history text-2xl mb-2"></i>
+                            <p>Belum ada logs</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => {
+                const isMidnight = log.message && log.message.includes('00:00');
+                return `
+                    <tr class="hover:bg-gray-50 ${isMidnight ? 'bg-yellow-50' : ''}">
+                        <td class="px-4 py-3 text-sm text-gray-900">
+                            ${log.executed_at || '-'}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900">
+                            ${log.schedule_id ? `Schedule #${log.schedule_id}` : 'System'}
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="status-badge ${log.status === 'success' ? 'bg-green-100 text-green-800' : 
+                                log.status === 'error' ? 'bg-red-100 text-red-800' : 
+                                'bg-blue-100 text-blue-800'}">
+                                ${log.status || 'unknown'}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-900">
+                            <div class="truncate max-w-xs" title="${log.message || '-'}">
+                                ${log.message || '-'}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function viewScheduleLogs(scheduleId) {
+            try {
+                const response = await fetch(`/api/schedules/${scheduleId}/logs`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    let logsHtml = '';
+                    if (result.logs && result.logs.length > 0) {
+                        logsHtml = result.logs.map(log => `
+                            <div class="border-b pb-2 mb-2">
+                                <div class="flex justify-between">
+                                    <span class="text-sm font-medium">${log.executed_at}</span>
+                                    <span class="status-badge ${log.status === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                        ${log.status}
+                                    </span>
+                                </div>
+                                <p class="text-sm text-gray-600 mt-1">${log.message}</p>
+                            </div>
+                        `).join('');
+                    } else {
+                        logsHtml = '<p class="text-gray-500 text-center py-4">No logs found for this schedule</p>';
+                    }
+                    
+                    const modalHtml = `
+                        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div class="bg-white rounded-lg p-6 w-3/4 max-w-2xl max-h-[80vh] overflow-y-auto">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="text-lg font-semibold">Logs for Schedule: ${result.schedule_name}</h3>
+                                    <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-gray-500 hover:text-gray-700">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="text-sm text-gray-600 mb-4">
+                                    Total logs: ${result.count}
+                                </div>
+                                <div class="logs-container">
+                                    ${logsHtml}
+                                </div>
+                                <div class="mt-4 flex justify-end">
+                                    <button onclick="this.parentElement.parentElement.parentElement.remove()" class="px-4 py-2 border rounded-lg">
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+                }
+            } catch (error) {
+                showNotification('Failed to load schedule logs: ' + error.message, 'error');
+            }
+        }
+
+        // ============================================
+        // MEDIA CHANNELS
+        // ============================================
+        async function loadMediaChannels() {
+            try {
+                const response = await fetch('/api/schedules/media-channels');
+                const result = await response.json();
+                
+                if (result.success) {
+                    mediaChannels = result.media_channels || [];
+                    updateMediaChannelSelect();
+                }
+            } catch (error) {
+                console.error('Failed to load media channels:', error);
+            }
+        }
+
+        function updateMediaChannelSelect() {
+            const select = document.getElementById('media_channel_id');
+            if (!select) return;
+            
+            // Clear existing options except first
+            while (select.options.length > 1) select.remove(1);
+            
+            // Add media channels
+            mediaChannels.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel.id;
+                option.textContent = channel.display_info || `${channel.platform_name || channel.platform} - ${channel.ads_type || 'No type'}`;
+                select.appendChild(option);
+            });
+        }
+
+        function renderMediaChannels() {
+            const container = document.getElementById('mediaChannelsList');
+            if (!container) return;
+            
+            if (!mediaChannels || mediaChannels.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-tv text-2xl mb-2"></i>
+                        <p>Tidak ada media channels</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = mediaChannels.map(channel => `
+                <div class="border rounded-lg p-3 mb-3">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 class="font-medium text-gray-900">${channel.platform_name || channel.platform}</h4>
+                            <p class="text-sm text-gray-600">${channel.platform || 'Unknown'}</p>
+                        </div>
+                        <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">${channel.ads_type || 'No type'}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <p><i class="fas fa-link mr-1"></i>${channel.link}</p>
+                    </div>
+                    <button onclick="testScrapingForChannel(${channel.id})" 
+                            class="text-sm bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded">
+                        <i class="fas fa-vial mr-1"></i>Test Scraping
+                    </button>
+                </div>
             `).join('');
         }
 
-        // Schedule Actions
+        // ============================================
+        // SCHEDULE ACTIONS
+        // ============================================
         async function toggleSchedule(scheduleId) {
-            if (!confirm('Apakah Anda yakin ingin mengubah status schedule ini?')) return;
-            
             try {
-                const response = await fetch(`/api/schedules/${scheduleId}/toggle`, {
-                    method: 'PATCH'
-                });
+                const response = await fetch(`/api/schedules/${scheduleId}/toggle`, { method: 'PATCH' });
+                const result = await response.json();
                 
-                if (response.ok) {
+                if (response.ok && result.success) {
+                    showNotification(result.message || 'Status berhasil diubah');
                     loadSchedules();
+                } else {
+                    showNotification(result.error || 'Gagal mengubah status', 'error');
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                showNotification('Terjadi kesalahan: ' + error.message, 'error');
             }
         }
 
         async function deleteSchedule(scheduleId) {
-            if (!confirm('Apakah Anda yakin ingin menghapus schedule ini? Semua logs terkait juga akan dihapus.')) return;
+            if (!confirm('Hapus schedule ini?')) return;
             
             try {
-                const response = await fetch(`/api/schedules/${scheduleId}`, {
-                    method: 'DELETE'
-                });
+                const response = await fetch(`/api/schedules/${scheduleId}`, { method: 'DELETE' });
+                const result = await response.json();
                 
-                if (response.ok) {
+                if (response.ok && result.success) {
+                    showNotification('Schedule berhasil dihapus');
                     loadSchedules();
+                } else {
+                    showNotification(result.error || 'Gagal menghapus', 'error');
                 }
             } catch (error) {
-                alert('Error: ' + error.message);
+                showNotification('Terjadi kesalahan: ' + error.message, 'error');
             }
         }
 
-        function viewLogs(scheduleId) {
-            // Implement log viewing
-            alert(`View logs for schedule ${scheduleId} - Coming Soon!`);
+        // ============================================
+        // RUN SCHEDULE NOW
+        // ============================================
+        function runScheduleNow(scheduleId, scheduleName) {
+            currentScheduleId = scheduleId;
+            currentScheduleName = scheduleName;
+            document.getElementById('runNowTitle').textContent = `Run "${scheduleName}"?`;
+            document.getElementById('runNowModal').classList.remove('hidden');
+        }
+
+        function closeRunNowModal() {
+            document.getElementById('runNowModal').classList.add('hidden');
+            currentScheduleId = null;
+            currentScheduleName = null;
+        }
+
+        async function executeRunNow() {
+            if (!currentScheduleId) return;
+            
+            try {
+                const response = await fetch(`/api/schedules/run-now/${currentScheduleId}`, { method: 'POST' });
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    showNotification('Task berhasil dijalankan');
+                    loadSchedules();
+                    loadLogs();
+                } else {
+                    showNotification(result.error || 'Gagal menjalankan', 'error');
+                }
+            } catch (error) {
+                showNotification('Terjadi kesalahan: ' + error.message, 'error');
+            } finally {
+                closeRunNowModal();
+            }
+        }
+
+        // ============================================
+        // TEST SCRAPING
+        // ============================================
+        function testScrapingForChannel(channelId) {
+            if (!channelId) return;
+            
+            if (confirm('Test scraping untuk channel ini?')) {
+                fetch('/api/schedules/test-scraping', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ media_channel_id: channelId })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        showNotification('Test scraping berhasil');
+                        loadLogs();
+                    } else {
+                        showNotification(result.error || 'Test scraping gagal', 'error');
+                    }
+                })
+                .catch(error => {
+                    showNotification('Error: ' + error.message, 'error');
+                });
+            }
+        }
+
+        // ============================================
+        // MIDNIGHT SCHEDULES
+        // ============================================
+        async function checkMidnightStatus() {
+            try {
+                const response = await fetch('/api/schedules/midnight-check');
+                const result = await response.json();
+                
+                if (result.success) {
+                    midnightSchedules = result.midnight_schedules || [];
+                    updateMidnightStatusUI(result);
+                }
+            } catch (error) {
+                console.error('Failed to check midnight status:', error);
+                document.getElementById('midnightStatus').innerHTML = 
+                    `<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">Error loading</span>`;
+            }
+        }
+
+        async function loadMidnightStatus() {
+            await checkMidnightStatus();
+            renderMidnightSchedules();
+        }
+
+        function updateMidnightStatusUI(result) {
+            const midnightStatus = document.getElementById('midnightStatus');
+            const summary = document.getElementById('midnightSummary');
+            
+            if (midnightStatus) {
+                const missed = result.missed || 0;
+                const active = result.active || 0;
+                const total = result.total || 0;
+                
+                if (missed > 0) {
+                    midnightStatus.innerHTML = `
+                        <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium blink">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>${missed} missed
+                        </span>
+                    `;
+                } else if (active > 0) {
+                    midnightStatus.innerHTML = `
+                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                            <i class="fas fa-check-circle mr-1"></i>${active} active
+                        </span>
+                    `;
+                } else {
+                    midnightStatus.innerHTML = `
+                        <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+                            <i class="fas fa-moon mr-1"></i>${total} total
+                        </span>
+                    `;
+                }
+                
+                // Update summary if exists
+                if (summary) {
+                    summary.textContent = `${active} active, ${missed} missed`;
+                }
+                
+                // Update status card
+                const statusCard = document.getElementById('midnightStatusCard');
+                if (statusCard) {
+                    let statusHtml = '';
+                    if (missed > 0) {
+                        statusHtml = `
+                            <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-exclamation-triangle text-red-500 text-xl mr-3"></i>
+                                    <div>
+                                        <h4 class="font-medium text-red-800">${missed} Midnight Schedule(s) Missed</h4>
+                                        <p class="text-sm text-red-600">Some 00:00 schedules have not executed today</p>
+                                    </div>
+                                </div>
+                                <button onclick="forceRunMidnight()" class="mt-3 w-full bg-red-100 hover:bg-red-200 text-red-800 py-2 px-4 rounded text-sm">
+                                    <i class="fas fa-bolt mr-1"></i>Force Run Missed Schedules
+                                </button>
+                            </div>
+                        `;
+                    } else if (active > 0) {
+                        statusHtml = `
+                            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 text-xl mr-3"></i>
+                                    <div>
+                                        <h4 class="font-medium text-green-800">All Midnight Schedules OK</h4>
+                                        <p class="text-sm text-green-600">${active} active 00:00 schedule(s) running normally</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        statusHtml = `
+                            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <div class="flex items-center">
+                                    <i class="fas fa-moon text-gray-500 text-xl mr-3"></i>
+                                    <div>
+                                        <h4 class="font-medium text-gray-800">No Midnight Schedules</h4>
+                                        <p class="text-sm text-gray-600">No 00:00 schedules configured</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    statusCard.innerHTML = statusHtml;
+                }
+            }
+        }
+
+        function renderMidnightSchedules() {
+            const container = document.getElementById('midnightSchedulesList');
+            if (!container) return;
+            
+            if (!midnightSchedules || midnightSchedules.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-8 border rounded-lg">
+                        <i class="fas fa-moon text-2xl mb-2"></i>
+                        <p>No midnight schedules found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = midnightSchedules.map(schedule => {
+                const isMissed = schedule.should_have_run_today;
+                const statusColor = isMissed ? 'red' : 
+                                  schedule.is_active ? 'green' : 'gray';
+                const statusIcon = isMissed ? 'exclamation-triangle' :
+                                  schedule.is_active ? 'check-circle' : 'pause-circle';
+                
+                return `
+                    <div class="border rounded-lg p-4 ${isMissed ? 'bg-red-50 border-red-200' : 'bg-white'}">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h4 class="font-medium text-gray-900">${schedule.name}</h4>
+                                <p class="text-sm text-gray-600">ID: ${schedule.id} • Type: ${schedule.schedule_type}</p>
+                            </div>
+                            <span class="bg-${statusColor}-100 text-${statusColor}-800 text-xs px-2 py-1 rounded">
+                                <i class="fas fa-${statusIcon} mr-1"></i>${schedule.status}
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-2 text-sm mb-3">
+                            <div>
+                                <span class="text-gray-500">Active:</span>
+                                <span class="ml-2 font-medium">${schedule.is_active ? 'Yes' : 'No'}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Run Time:</span>
+                                <span class="ml-2 font-medium">${schedule.run_time}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Recent Executions:</span>
+                                <span class="ml-2 font-medium">${schedule.recent_executions}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Last Execution:</span>
+                                <span class="ml-2 font-medium">${schedule.last_execution || 'Never'}</span>
+                            </div>
+                        </div>
+                        
+                        ${isMissed ? `
+                            <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mb-3">
+                                <div class="flex items-center">
+                                    <i class="fas fa-exclamation-circle text-yellow-500 mr-2"></i>
+                                    <span class="text-sm text-yellow-700">This schedule should have run today but hasn't</span>
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="flex gap-2">
+                            <button onclick="runScheduleNow(${schedule.id}, '${schedule.name.replace(/'/g, "\\'")}')" 
+                                    class="flex-1 bg-green-100 hover:bg-green-200 text-green-800 py-2 px-3 rounded text-sm">
+                                <i class="fas fa-play mr-1"></i>Run Now
+                            </button>
+                            <button onclick="toggleSchedule(${schedule.id})" 
+                                    class="flex-1 bg-blue-100 hover:bg-blue-200 text-blue-800 py-2 px-3 rounded text-sm">
+                                <i class="fas fa-${schedule.is_active ? 'pause' : 'play'} mr-1"></i>${schedule.is_active ? 'Pause' : 'Activate'}
+                            </button>
+                            <button onclick="viewScheduleLogs(${schedule.id})" 
+                                    class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 px-3 rounded text-sm">
+                                <i class="fas fa-history mr-1"></i>Logs
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function refreshMidnightStatus() {
+            checkMidnightStatus();
+            if (document.getElementById('midnightTab').classList.contains('hidden') === false) {
+                renderMidnightSchedules();
+            }
+            showNotification('Midnight status refreshed');
+        }
+
+        function forceRunMidnight() {
+            document.getElementById('forceMidnightModal').classList.remove('hidden');
+        }
+
+        function closeForceMidnightModal() {
+            document.getElementById('forceMidnightModal').classList.add('hidden');
+        }
+
+        async function confirmForceRunMidnight() {
+            try {
+                const response = await fetch('/api/schedules/midnight/force-run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    showNotification(result.message || 'Midnight schedules force run initiated');
+                    
+                    // Show results
+                    let resultsHtml = '';
+                    if (result.results && result.results.length > 0) {
+                        resultsHtml = '<div class="mt-4"><h4 class="font-medium mb-2">Results:</h4>';
+                        result.results.forEach(res => {
+                            const isSuccess = res.status === 'success';
+                            resultsHtml += `
+                                <div class="flex items-center mb-1">
+                                    <i class="fas fa-${isSuccess ? 'check text-green-500' : 'times text-red-500'} mr-2"></i>
+                                    <span>${res.name}: ${res.status}</span>
+                                </div>
+                            `;
+                        });
+                        resultsHtml += '</div>';
+                    }
+                    
+                    showNotification(`Force run completed. ${resultsHtml}`, 'info');
+                    
+                    // Refresh data
+                    loadSchedules();
+                    loadLogs();
+                    checkMidnightStatus();
+                } else {
+                    showNotification(result.error || 'Failed to force run midnight schedules', 'error');
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, 'error');
+            } finally {
+                closeForceMidnightModal();
+            }
+        }
+
+        // ============================================
+        // SYSTEM STATUS & MONITORING
+        // ============================================
+        async function updateSystemStatus() {
+            try {
+                // Update server time
+                const now = new Date();
+                document.getElementById('serverTime').textContent = now.toLocaleTimeString('id-ID');
+                
+                if (document.getElementById('monitorServerTime')) {
+                    document.getElementById('monitorServerTime').textContent = now.toLocaleString('id-ID');
+                }
+                
+                // Check health
+                const response = await fetch('/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('serverStatus').textContent = 'Healthy';
+                    
+                    if (document.getElementById('monitorDatabaseStatus')) {
+                        document.getElementById('monitorDatabaseStatus').textContent = data.database || 'Unknown';
+                    }
+                    
+                    // Check scheduler status
+                    if (data.scheduler) {
+                        const isRunning = data.scheduler.running;
+                        document.getElementById('schedulerRunning').textContent = isRunning ? 'Running' : 'Stopped';
+                        
+                        if (document.getElementById('monitorSchedulerStatus')) {
+                            document.getElementById('monitorSchedulerStatus').textContent = 
+                                isRunning ? 'Running (' + (data.scheduler.jobs_count || 0) + ' jobs)' : 'Stopped';
+                        }
+                        
+                        if (data.scheduler.jobs_count !== undefined) {
+                            document.getElementById('jobsCount').textContent = data.scheduler.jobs_count;
+                        }
+                    }
+                }
+            } catch (error) {
+                document.getElementById('serverStatus').textContent = 'Error';
+                document.getElementById('schedulerRunning').textContent = 'Unknown';
+            }
+        }
+
+        function updateMonitor() {
+            updateSystemStatus();
+            loadSchedules();
+            loadLogs();
+            checkMidnightStatus();
         }
 
         function refreshSchedules() {
             loadSchedules();
+            showNotification('Schedules refreshed');
+        }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        function formatDateTime(datetimeString) {
+            if (!datetimeString) return '-';
+            try {
+                const date = new Date(datetimeString);
+                return date.toLocaleString('id-ID', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return datetimeString;
+            }
+        }
+
+        function showNotification(message, type = 'success') {
+            const toast = document.getElementById('notification');
+            toast.innerHTML = message;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 fade-in`;
+            
+            if (type === 'success') {
+                toast.classList.add('bg-green-500', 'text-white');
+            } else if (type === 'error') {
+                toast.classList.add('bg-red-500', 'text-white');
+            } else if (type === 'warning') {
+                toast.classList.add('bg-yellow-500', 'text-white');
+            } else if (type === 'info') {
+                toast.classList.add('bg-blue-500', 'text-white');
+            } else {
+                toast.classList.add('bg-gray-500', 'text-white');
+            }
+            
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
         }
     </script>
 </body>
